@@ -13,7 +13,10 @@ st.set_page_config(layout="wide")
 # --- Load Data ---
 st.title("ML-Based Portfolio Allocation (BTC, Gold, SPY)")
 tickers = ['BTC-USD', 'GLD', 'SPY']
-data = yf.download(tickers, start="2020-01-01")['Adj Close']
+data = yf.download(tickers, start="2020-01-01")
+print(data.head())  # Cek dulu kolom-kolom yang ada
+adj_close = data['Adj Close']
+
 data.dropna(inplace=True)
 st.write("Data Harga Terbaru")
 st.line_chart(data)
