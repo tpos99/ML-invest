@@ -15,7 +15,7 @@ url = "https://yahoo-finance1.p.rapidapi.com/stock/v2/get-historical-data"
 
 headers = {
     "X-RapidAPI-Host": "yahoo-finance1.p.rapidapi.com",
-    "X-RapidAPI-Key": "YOUR_RAPIDAPI_KEY"  # Ganti dengan API Key kamu
+    "X-RapidAPI-Key": "e6ca7e292cmsha4b86f4396f3f11p105b3fjsn3e0c11805fde"  # Ganti dengan API Key kamu
 }
 
 # Simbol dari Yahoo Finance
