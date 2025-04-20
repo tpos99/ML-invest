@@ -1,3 +1,4 @@
-streamlit
+ueststreamlit
 yahoo_fin
 pandas
+request
