@@ -1,10 +1,10 @@
 import streamlit as st
-import yfinance as yf
+from yahoo_fin import stock_info as si
 import pandas as pd
 import datetime
 
 # Judul Aplikasi
-st.title("Analisis Data BTC, Emas, dan SPY dari Yahoo Finance")
+st.title("Analisis Data BTC, Emas, dan SPY dari Yahoo Finance API")
 
 # Rentang tanggal
 start_date = st.date_input("Tanggal Mulai", datetime.date(2020, 1, 1))
@@ -24,11 +24,14 @@ selected_assets = st.multiselect(
     default=list(symbols.keys())
 )
 
-# Ambil data
+# Ambil data menggunakan Yahoo Finance API
 @st.cache_data
 def load_data(symbol, start, end):
-    data = yf.download(symbol, start=start, end=end)
-    data = data[['Adj Close']]
+    # Mengambil data menggunakan yahoo_fin
+    data = si.get_data(symbol, start_date=start, end_date=end)
+    
+    # Ambil kolom 'adjclose' untuk harga penutupan yang sudah disesuaikan
+    data = data[['adjclose']]
     data.columns = [symbol]
     return data
 
