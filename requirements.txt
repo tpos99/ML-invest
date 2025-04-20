@@ -1,9 +1,3 @@
 streamlit
-pandas
-numpy
 yfinance
-xgboost
-joblib
-hmmlearn
-seaborn
-matplotlib
+pandas
