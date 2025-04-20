@@ -1,89 +1,46 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 import yfinance as yf
-import xgboost as xgb
-import joblib
-from hmmlearn.hmm import GaussianHMM
-import matplotlib.pyplot as plt
-import seaborn as sns
+import pandas as pd
+import datetime
 
-st.set_page_config(layout="wide")
+# Judul Aplikasi
+st.title("Analisis Data BTC, Emas, dan SPY dari Yahoo Finance")
 
-# --- Load Data ---
-st.title("ML-Based Portfolio Allocation (BTC, Gold, SPY)")
-tickers = ['BTC-USD', 'GLD', 'SPY']
-data = yf.download(tickers, start="2020-01-01")
-print(data.head())  # Cek dulu kolom-kolom yang ada
-adj_close = data['Adj Close']
+# Rentang tanggal
+start_date = st.date_input("Tanggal Mulai", datetime.date(2020, 1, 1))
+end_date = st.date_input("Tanggal Akhir", datetime.date.today())
 
-data.dropna(inplace=True)
-st.write("Data Harga Terbaru")
-st.line_chart(data)
-
-# --- Compute Returns ---
-returns = data.pct_change().dropna()
-
-# --- Load Trained Models ---
-xgb_model = xgb.XGBClassifier()
-xgb_model.load_model("xgb_model.json")
-hmm_model = joblib.load("hmm_model.pkl")
-
-# --- Generate XGBoost Features ---
-def generate_features(returns):
-    df = returns.copy()
-    df['ret_1d'] = returns['SPY']
-    df['ret_1d_lag1'] = df['ret_1d'].shift(1)
-    df['ma_5'] = df['ret_1d'].rolling(5).mean()
-    df['momentum'] = df['ret_1d'] - df['ma_5']
-    df['target'] = (df['ret_1d'].shift(-1) > 0).astype(int)
-    return df.dropna()
-
-feat_df = generate_features(returns)
-X_feat = feat_df[['ret_1d_lag1', 'ma_5', 'momentum']]
-xgb_pred = xgb_model.predict(X_feat)
-xgb_series = pd.Series(xgb_pred, index=feat_df.index)
-
-# --- HMM Regime ---
-spy_ret = returns['SPY'].dropna().values.reshape(-1, 1)
-regimes = hmm_model.predict(spy_ret)
-regime_series = pd.Series(regimes, index=returns['SPY'].dropna().index)
-
-# --- Align ---
-common_index = regime_series.index.intersection(xgb_series.index)
-regime_series = regime_series.loc[common_index]
-xgb_series = xgb_series.loc[common_index]
-
-# --- Define Allocation ---
-alloc_matrix = {
-    (1, 0): [0.4, 0.2, 0.4],
-    (1, 1): [0.3, 0.3, 0.4],
-    (1, 2): [0.2, 0.5, 0.3],
-    (0, 0): [0.2, 0.5, 0.3],
-    (0, 1): [0.1, 0.7, 0.2],
-    (0, 2): [0.05, 0.85, 0.1]
+# Simbol dari Yahoo Finance
+symbols = {
+    "Bitcoin (BTC-USD)": "BTC-USD",
+    "Gold (Emas - GC=F)": "GC=F",
+    "SPY (S&P 500 ETF)": "SPY"
 }
 
-weights = pd.DataFrame(index=common_index, columns=returns.columns)
-for dt in common_index:
-    pred = xgb_series.loc[dt]
-    reg = regime_series.loc[dt]
-    weights.loc[dt] = alloc_matrix.get((pred, reg), [1/3, 1/3, 1/3])
-weights = weights.fillna(method='ffill')
+# Pilihan aset
+selected_assets = st.multiselect(
+    "Pilih aset yang ingin ditampilkan:",
+    list(symbols.keys()),
+    default=list(symbols.keys())
+)
 
-# --- Backtest ---
-aligned_returns = returns.loc[weights.index]
-portfolio = (weights.shift(1) * aligned_returns).sum(axis=1)
-equity_curve = (1 + portfolio).cumprod()
+# Ambil data
+@st.cache_data
+def load_data(symbol, start, end):
+    data = yf.download(symbol, start=start, end=end)
+    data = data[['Adj Close']]
+    data.columns = [symbol]
+    return data
 
-# --- Display ---
-st.subheader("Kinerja Strategi Real-time ML")
-st.line_chart(equity_curve.rename("Equity Curve"))
+# Gabungkan data
+if selected_assets:
+    df_list = [load_data(symbols[asset], start_date, end_date) for asset in selected_assets]
+    merged_data = pd.concat(df_list, axis=1)
+    st.subheader("Data Harga Penutupan Disesuaikan (Adj Close)")
+    st.dataframe(merged_data.tail())
 
-# --- Heatmap ---
-st.subheader("Heatmap Alokasi Aset")
-fig, ax = plt.subplots(figsize=(10, 4))
-sns.heatmap(weights.astype(float), cmap="YlGnBu", ax=ax)
-st.pyplot(fig)
+    st.subheader("Visualisasi Harga")
+    st.line_chart(merged_data)
 
-st.caption("Model XGBoost dan HMM dilatih offline, lalu dimuat untuk prediksi harian.")
+else:
+    st.warning("Pilih setidaknya satu aset untuk ditampilkan.")
